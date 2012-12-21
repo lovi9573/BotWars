@@ -1,0 +1,232 @@
+======BotWars documentation======
+
+Half for my sanity and half for yours
+
+_______________________________________________________________________________
+====TODO's====
+1. --DONE-- fix the doMoveRound in GameEngine to query the Bots for a move direction
+	a. --DONE--  Add this interface to the botwrapper and document it.
+2. Remove Depreciated interfaces from BotWrapper
+	a. Update documentation
+4. Implement a global VERBOSE and DEBUG flag in the GameEngine.
+5. Document the message system between the Gameengine and ServerGui
+6. Find the memory leak in the GameEngine.  (copy.copy??)
+12. --DONE--Resolve the erroneous placement of the views
+	a. The optimized rects need to be shifted into position
+13. Clean up sloppy code and extra vars
+14. Document!!
+15. Don't crash on socket error if one client closes unexpectedly
+16. Reduce the number of threads
+	a. GameEngine.processCommands
+	b. GameEngine.run
+	c. gui.run
+	d. GameQueue.monitorincoming
+		1.monitorTCP
+		2.monitorLocal
+	e. TCPServer
+		1.monitorIncoming
+		2.monitorOutgoing
+		3.serverStart
+17. Ensure the gui doesn't crash before it recieves init command
+______________________________________________________________________________-
+====The Game Field====
+
+A 1000X650 pixel field in the format:
+
+(0,0)...............1000 x
+.
+.
+.
+.
+.
+650
+y
+______________________________________________________________________________-
+====The Game Engine====
+
+The Game Engine is turn based.  
+	It runs multiple games, 
+		each having many rounds, 
+			which cycle through actions, 
+				which give each player a turn.
+				
+The Game actions are as follows every round in order along with information passed to a. and from b. the bots:
+	1. Dispatch user commands to Bots
+		a. String command:  ""
+		
+	2. Each Bot gets to look a direction of its choice
+		a. A list of "seen" objects is returned to the bot one at a time
+		b....
+			1. Bot's name: ""
+			2. Bot's position: (x,y)
+			3. Bot's Look direction in degrees: int
+			
+	3. Bots make preparations
+		A. This allows the Bot's a chance to do any calculations or make decisions before the game continues:
+			1. Set stances
+			2. Set fire types
+			3. Set Targets
+		a. Round Number: int
+		b. Stance: Stance object
+		
+	4. Move
+		a. Position (x,y)
+		b....
+			1. Stance: Stance object
+			2. Position: (x,y)
+			3. Name ""
+			
+	5. Fire/Guard
+		a. adjusthealth:  Damage object
+		b....
+			1. Stance: Stance object
+			2. Target:  Gameobject object
+			3. Name ""
+				
+	6. * Resolve healths, deaths, etc
+		a. number of round that just ended:  int
+		b.
+	
+
+In addition the following values are sent to and returned from the bots at the beginning/ end of each game:
+
+	1. Beginning of Game
+		a. the width of the Bot's view in degrees: int
+		b.
+		
+	2. End of Game
+		a.A new health for the upcoming game: int
+		b.
+______________________________________________________-
+====Game Objects====
+
+First and foremost is your Bot.  You are responsible  for creating this class and its methods in a file
+	called <your name>_bot.py
+	
+class Bot(object):
+
+    #@Purpose: Creates a Bot object from this class.  Use it to initialize variables
+    #@Argument: int health: the health your bot starts with  
+    #@Argument: Botwrapper parentclass: This is a reference to the wrapper for your bot. use the wrapper's HealMe() method to heal your bot.
+    #@return: None
+    def __init__(self,health,parentclass):
+
+    #@Purpose: Informs the bot that the round ended 
+    #@Argument: int n: the round number that just ended
+    #@return: None       
+    def endRound(self,n):
+    
+    #@Purpose: Informs the game of your bot's flag color
+    #@return: 3-tuple: in the form (R,G,B) 0-255 for each color
+    def getColor(self):
+    
+    
+    #@Purpose: DEPRECIATED
+    #@return: dictionary: A dictionary with keys "guard" and "fire" and values that are filenames
+    def getImages(self):
+ 
+    #@Purpose: Asks the bot which direction it would like to move (0 = no movement, use 360 for Right)
+    #@return: int: the degree direction the bot would like to move
+    def getMoveDirection(self):
+     
+    #@Purpose: Asks the Bot for its name
+    #@return: String: the name of the bot    
+    def getName(self):
+    
+    #@Purpose: Asks the bot which direction it will look
+    #@return: int: the degree direction to look
+    def getLookDirection(self):
+     
+    #@Purpose: Tells the bot what it saw during the look action  This may be called multiple times.
+    #@Argument: GameObject obj: a Gameobject object.
+    #@return: None
+    def setLookResults(self,obj):
+   
+    #@Purpose: DEPRECIATED
+    #@return: List: A list of enemy names
+    def getEnemies(self):
+ 
+    #@Purpose: Allows the Bot to make any important decisions before the move/fire actions begin
+    #@Argument: int n: The current round number
+    #@return: Stance: The Current stance of the bot.               
+    def prepare(self,n):
+
+    #@Purpose: Asks the Bot where it wants to shoot
+    #@return: Gameobject: A gameobject representing the target location
+    def getTarget(self):
+     
+    #@Purpose: Tells the bot what damage it has taken
+    #@Argument: Damage damage: A Damage object representing the shot that gave the damage
+    #@return: int: the adjusted health
+    def adjustHealth(self,damage):
+ 
+    #@Purpose: Asks the Bot for its current health
+    #@return: int: the bot's current health   
+    def getHealth(self):
+ 
+    #@Purpose: Asks the bot for its current stance
+    #@return: Stance: A Stance object
+    def getStance(self):
+ 
+    #@Purpose: Tells the bot How wide its vision field is
+    #@Argument: int WoF: The degree measure of the bot's width of view field
+    #@return: None    
+    def setWoF(self,WoF):
+   
+    #@Purpose: Tells the bot That a new Game is starting
+    #@Argument: int h: The health to start the new game with
+    #@return: None
+    def reset(self,h):
+ 
+ 
+______________________________________________________-
+====Game Engine Message System====   
+
+
+1. Sent from GameEngine to Gui by Broadcast
+	a. "init"
+		1. Value: -1 
+		2. Array: (Avatars ...)  ?? include area size??  
+	a. "updateBot"
+		1. Value: -1 
+		2. Array: (Avatar,)
+	a. "updateRound"
+		1. Value: -1 
+		2. Array: (int round,)
+	a. "drawView"
+		1. Value: -1 
+		2. Array: (View,)
+	a. "drawShot"
+		1. Value: -1 
+		2. Array: (Shot,)
+	a. "displayStats"
+		1. Value: -1 
+		2. Array: (String type , (BotStats...))
+		
+2. Sent from GameEngine to Gui by Request
+	a. "init"
+		1. Value: fileno() 
+		2. Array: ( Avatars...)
+	a. "setAvailableBots"
+		1. Value: fileno() 
+		2. Array: ( String names)
+
+3. Sent from Gui to GameEngine
+	a. "run"
+		1. Value: fileno() 
+		2. Array: None
+	b. "getAvailableBots"
+		1. Value: fileno() 
+		2. Array: None
+	c. "botCommand"
+		1. Value: fileno() 
+		2. Array: (String Botname, String command)
+	d. "getInit"
+		1. Value: fileno() 
+		2. Array: None
+	e. setWoF
+		1. 0
+		2. Array: (wof,)
+	f. setSleepTime
+		1. 0
+		2. Array: (delay time,)
